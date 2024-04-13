@@ -1,0 +1,408 @@
+---
+title: "Nike Nocta Sentiment Analysis"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+rm(list = ls(all.names = TRUE))
+
+# This is a function call to clean the environment panel in R Studio.
+```
+
+```{r}
+cat("\014")
+
+# This is a function call to clean the R Console.
+```
+```{r}
+library(readxl)
+
+# Run this library to read excel or csv file. If you do not have it then install the package by using a function call install.packages("readxl")#. 
+```
+
+
+```{r}
+# If you're reading from a CSV or Excel file, you would use something like read.csv() or read_excel() to load your data to a data frame
+
+All_Nocta_Reddit <- read.csv("C:/Users/91992/IdeaProjects/PythonTraining/Nocta_Reddit_Thread_Cleaned.csv", header = TRUE)
+```
+
+```{r}
+# Load libraries for dataframe manipulation like dplyr, stringr to deal with string datatype, and purrr
+
+library(dplyr)
+library(stringr)
+library(purrr)
+```
+
+```{r}
+# Create a dataframe with necessary columns for text processing
+
+Nocta_Threads <- All_Nocta_Reddit[, c('selftext', 'link_flair_text')]
+```
+
+```{r}
+View(Nocta_Threads)
+```
+
+```{r}
+# Load necessary libraries for cleaning, text mining, and sentiment analysis
+
+library(NLP)
+library(tm)
+# library(RColorBrewer)
+library(SnowballC)
+library(syuzhet)
+```
+
+```{r}
+# Remove the unnecessary special characters from the text
+
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "–")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "’")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "—")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "“")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "”")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "-")
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "&amp")
+```
+
+```{r}
+# Remove the mention of URL links from the text
+
+Nocta_Threads$selftext <- str_remove_all(Nocta_Threads$selftext, "https://[^\\s]+")
+```
+
+```{r}
+View(Nocta_Threads)
+```
+
+```{r}
+# tm functions for text cleaning like removing punctuation and conforming text to lower case
+
+Nocta_Threads$selftext <-removePunctuation(Nocta_Threads$selftext)
+Nocta_Threads$selftext <-tolower(Nocta_Threads$selftext)
+```
+
+```{r}
+Nocta_Threads$selftext <-stripWhitespace(Nocta_Threads$selftext)
+Nocta_Threads$selftext <-wordStem(Nocta_Threads$selftext) #function from SnowballC
+
+Final_Nocta_Thread <- Nocta_Threads$selftext
+```
+
+```{r}
+head(Final_Nocta_Thread)
+tail(Final_Nocta_Thread)
+```
+```{r}
+# Sentiment analysis:
+# sentiment score using get_sentiment() function & scoring method
+# scoring mehods: syuzhet, bing, afinn, nrc 
+# Each method may have different scale
+
+syuzhet_score <- get_sentiment(Final_Nocta_Thread, method="syuzhet")
+head(syuzhet_score)
+summary(syuzhet_score)
+
+bing_score <- get_sentiment(Final_Nocta_Thread, method="bing")
+head(bing_score)
+summary(bing_score)
+
+afinn_score <- get_sentiment(Final_Nocta_Thread, method="afinn")
+head(afinn_score)
+summary(afinn_score)
+
+nrc_score <- get_sentiment(Final_Nocta_Thread, method="nrc")
+head(nrc_score)
+summary(nrc_score)
+
+comb_score <- cbind(syuzhet_score, bing_score, afinn_score, nrc_score)
+dimnames(comb_score) <- list(1:nrow(comb_score), c("syuzhet", "bing", "afinn", "nrc"))
+
+Nocta_Threads_Analysis <- as.data.frame(comb_score)
+head(df,20)
+```
+```{r}
+# simple analysis based on syuzhet_score
+# View the negative comment basis syuzhet score
+
+min(Nocta_Threads_Analysis$syuzhet)
+minScore <- which(Nocta_Threads_Analysis$syuzhet==min(Nocta_Threads_Analysis$syuzhet))
+minScore
+Final_Nocta_Thread[minScore]
+```
+```{r}
+# View the second negative comment basis syuzhet score
+
+sorted_scores <- sort(unique(Nocta_Threads_Analysis$syuzhet))
+second_min_score <- sorted_scores[2]
+```
+
+```{r}
+minScore2 <- which(Nocta_Threads_Analysis$syuzhet==second_min_score)
+Final_Nocta_Thread[minScore2]
+```
+```{r}
+# sort the third comment to a data frame 
+third_min_score <- sorted_scores[3]
+```
+
+```{r}
+# View the third negative comment basis syuzhet score
+minScore3 <- which(Nocta_Threads_Analysis$syuzhet==third_min_score)
+Final_Nocta_Thread[minScore3]
+```
+```{r}
+#Lets look at some positive ones
+
+max(Nocta_Threads_Analysis$syuzhet)
+maxScore <- which(Nocta_Threads_Analysis$syuzhet==max(Nocta_Threads_Analysis$syuzhet))
+maxScore
+Final_Nocta_Thread[maxScore]
+```
+```{r}
+# Order the rows by the syuzhet score in descending order and take the top 10
+top_positive_comments <- Nocta_Threads_Analysis %>%
+  arrange(desc(syuzhet)) %>%
+  head(10)
+
+# Now, get the corresponding text from Final_Nocta_Thread
+top_positive_comments
+```
+```{r}
+# Order the rows by the Afinn score in descending order and take the top 10
+top_positive_comments_afinn <- Nocta_Threads_Analysis %>%
+  arrange(desc(afinn)) %>%
+  head(10)
+
+# Now, get the corresponding text from Final_Nocta_Thread
+top_positive_comments_afinn
+```
+
+```{r}
+# Order the rows by the Bing score in descending order and take the top 10
+top_positive_comments_bing <- Nocta_Threads_Analysis %>%
+  arrange(desc(bing)) %>%
+  head(10)
+
+# Now, get the corresponding text from Final_Nocta_Thread
+top_positive_comments_bing
+```
+
+```{r}
+# Order the rows by the nrc score in descending order and take the top 10
+top_positive_comments_nrc <- Nocta_Threads_Analysis %>%
+  arrange(desc(nrc)) %>%
+  head(10)
+
+# Now, get the corresponding text from Final_Nocta_Thread
+top_positive_comments_nrc
+```
+
+
+```{r}
+sorted_scores_desc <- sort(unique(Nocta_Threads_Analysis$syuzhet), decreasing = TRUE)
+second_max_score <- sorted_scores_desc[2]
+```
+
+```{r}
+maxScore2 <- which(Nocta_Threads_Analysis$syuzhet==second_max_score)
+Final_Nocta_Thread[maxScore2]
+```
+```{r}
+maxScore3 <- sorted_scores_desc[3]
+maxScore3 <- which(Nocta_Threads_Analysis$syuzhet==maxScore3)
+Final_Nocta_Thread[maxScore3]
+```
+```{r}
+# simple analysis based on bing score and find some of the most positive comments
+
+max(Nocta_Threads_Analysis$bing)
+maxBScore <- which(Nocta_Threads_Analysis$bing==max(Nocta_Threads_Analysis$bing))
+maxBScore
+Final_Nocta_Thread[maxBScore]
+```
+```{r}
+sorted_bing_scores_desc <- sort(unique(Nocta_Threads_Analysis$bing), decreasing = TRUE)
+second_max_bing_score <- sorted_bing_scores_desc[2]
+```
+
+```{r}
+maxBScore2 <- which(Nocta_Threads_Analysis$bing==second_max_bing_score)
+Final_Nocta_Thread[maxBScore2]
+```
+```{r}
+third_max_bing_score <- sorted_bing_scores_desc[3]
+maxBScore3 <- which(Nocta_Threads_Analysis$bing==third_max_bing_score)
+Final_Nocta_Thread[maxBScore3]
+```
+```{r}
+# simple analysis based on bing score and find some of the most negative comments
+
+min(Nocta_Threads_Analysis$bing)
+minBScore <- which(Nocta_Threads_Analysis$bing==min(Nocta_Threads_Analysis$bing))
+minBScore
+Final_Nocta_Thread[minBScore]
+```
+```{r}
+sorted_bing_scores <- sort(unique(Nocta_Threads_Analysis$bing))
+second_min_score <- sorted_bing_scores[2]
+```
+
+```{r}
+minBScore2 <- which(Nocta_Threads_Analysis$bing==second_min_score)
+minBScore2
+Final_Nocta_Thread[minBScore2]
+```
+```{r}
+# simple analysis based on afinn score and find some of the most positive comments
+
+max(Nocta_Threads_Analysis$afinn)
+maxAScore <- which(Nocta_Threads_Analysis$afinn==max(Nocta_Threads_Analysis$afinn))
+maxAScore
+Final_Nocta_Thread[maxAScore]
+```
+```{r}
+# simple analysis based on afinn score and find some of the most negative comments
+
+min(Nocta_Threads_Analysis$afinn)
+minAScore <- which(Nocta_Threads_Analysis$afinn==min(Nocta_Threads_Analysis$afinn))
+minAScore
+Final_Nocta_Thread[minAScore]
+```
+```{r}
+sorted_afinn_scores_desc <- sort(unique(Nocta_Threads_Analysis$afinn), decreasing = TRUE)
+second_min_afinn_score <- sorted_afinn_scores_desc[2]
+```
+
+```{r}
+minAScore2 <- which(Nocta_Threads_Analysis$afinn==second_min_afinn_score)
+minAScore2
+Final_Nocta_Thread[minAScore2]
+```
+```{r}
+third_min_afinn_score <- sorted_afinn_scores_desc[3]
+minAScore3 <- which(Nocta_Threads_Analysis$afinn==third_min_afinn_score)
+minAScore3
+Final_Nocta_Thread[minAScore3]
+```
+```{r}
+# simple analysis based on nrc score and find some of the most negative comments
+
+min(Nocta_Threads_Analysis$nrc)
+minNScore <- which(Nocta_Threads_Analysis$nrc==min(Nocta_Threads_Analysis$nrc))
+minNScore
+Final_Nocta_Thread[minNScore]
+```
+```{r}
+norm_score <- cbind(
+                    sign(syuzhet_score), 
+                    sign(bing_score), 
+                    sign(afinn_score),
+                    sign(nrc_score))
+
+dimnames(norm_score)<-list(1:nrow(norm_score), c("Syuzhet", "Bing", "Afinn", "NRC"))
+head(norm_score)
+
+finalscore<-as.data.frame(norm_score)
+head(finalscore,20)
+```
+
+```{r}
+round(prop.table(table(finalscore$Syuzhet)),2)
+```
+```{r}
+library(plotly)
+```
+
+```{r}
+nrc_sentiment <- get_nrc_sentiment(Final_Nocta_Thread)
+
+# Calculate the sum of sentiments
+
+sentisum <- colSums(nrc_sentiment)
+
+# Create an interactive bar plot using plotly
+
+p <- plot_ly(x = names(sentisum), y = sentisum, type = 'bar', marker = list(color = scales::brewer_pal(palette = "Set2")(10))) %>%
+  layout(title = "Emotions and Sentiments", xaxis = list(title = ""), yaxis = list(title = "Count"))
+
+# To view the plot, simply print `p`
+
+p
+```
+
+```{r}
+nrc_sentiment$text <- Final_Nocta_Thread
+```
+
+
+```{r}
+# Filter for 'anger' emotion or sort by 'anger' to find the top entries
+top_anger_texts <- nrc_sentiment %>%
+  arrange(desc(anger)) %>%
+  head(n = 5) # Adjust n for more or fewer entries
+
+# View the texts
+print(top_anger_texts$text)
+```
+
+```{r}
+# Example for 'anticipation'
+top_disgust_texts <- nrc_sentiment %>%
+  arrange(desc(disgust)) %>%
+  head(n = 10)
+
+print(top_disgust_texts$text)
+```
+
+```{r}
+#Lets look at the proportion of comments basis the category 
+
+library(dplyr)
+```
+
+```{r}
+# Count the number of self text entries for each link_flair_text
+
+Final_Nocta_Thread_summary <- Nocta_Threads %>%
+  group_by(link_flair_text) %>%
+  summarise(count = n())
+```
+
+```{r}
+# install.packages("viridis")
+library(viridis)
+```
+
+```{r}
+# Sort the dataframe in ascending order by the count
+Final_Nocta_Thread_summary <- Final_Nocta_Thread_summary %>%
+  arrange(desc(count))
+
+# Create an interactive bar plot with plotly
+
+interactive_bar <- plot_ly(Final_Nocta_Thread_summary, x = ~link_flair_text, y = ~count, type = 'bar',
+                           marker = list(color = viridis::viridis(14, option = "D"))) %>%
+  layout(title = 'Proportion of Reddit Comments by Category',
+         xaxis = list(title = 'Category', categoryorder = "total descending"),
+         yaxis = list(title = 'Count'))
+```
+
+```{r}
+interactive_bar
+```
+
+```{r}
+# Filter for conversations in the 'good review' category
+good_review_conversations <- All_Nocta_Reddit %>%
+  arrange(link_flair_text == "good review")
+
+# View the filtered conversations
+View(good_review_conversations$selftext)
+```
